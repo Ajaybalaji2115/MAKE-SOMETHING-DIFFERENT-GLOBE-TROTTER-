@@ -1,11 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, DollarSign, MapPin, PlusCircle, Trash2 } from 'lucide-react';
+import { Calendar, Wallet, MapPin, PlusCircle, Trash2 } from 'lucide-react';
+import { formatCurrency } from '../utils/currency';
 import api from '../lib/axios';
+import { useLanguage } from '../context/LanguageContext';
 
 const MyTrips = () => {
     const [trips, setTrips] = useState([]);
     const [loading, setLoading] = useState(true);
+    const { t } = useLanguage();
 
     useEffect(() => {
         fetchTrips();
@@ -23,7 +26,7 @@ const MyTrips = () => {
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this trip?')) return;
+        if (!window.confirm(t('deleteTripQuestion'))) return;
         try {
             // Backend delete endpoint not implemented yet in Controller, but good to have UI ready.
             // assuming api.delete(`/trips/${id}`)
@@ -48,15 +51,15 @@ const MyTrips = () => {
         <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between mb-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-gray-900">My Trips</h1>
-                    <p className="text-gray-500 mt-2">Manage all your planned adventures.</p>
+                    <h1 className="text-3xl font-bold text-gray-900">{t('myTrips')}</h1>
+                    <p className="text-gray-500 mt-2">{t('manageAdventures')}</p>
                 </div>
                 <Link
                     to="/create-trip"
                     className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
                 >
                     <PlusCircle size={20} />
-                    Create New Trip
+                    {t('newTrip')}
                 </Link>
             </div>
 
@@ -73,7 +76,7 @@ const MyTrips = () => {
                                     </div>
                                 )}
                                 <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-semibold text-gray-700">
-                                    Draft
+                                    {t('draft')}
                                 </div>
                             </div>
                             <div className="p-5 flex-1 flex flex-col">
@@ -86,8 +89,8 @@ const MyTrips = () => {
                                         <span>{trip.startDate} - {trip.endDate}</span>
                                     </div>
                                     <div className="flex items-center gap-2">
-                                        <DollarSign size={16} className="text-gray-400" />
-                                        <span>Budget: ${trip.budget}</span>
+                                        <Wallet size={16} className="text-gray-400" />
+                                        <span>{t('budgetLabel')} {formatCurrency(trip.budget)}</span>
                                     </div>
                                 </div>
 
@@ -102,7 +105,7 @@ const MyTrips = () => {
                                         to={`/trips/${trip.id}`}
                                         className="text-blue-600 font-medium hover:text-blue-700 text-sm"
                                     >
-                                        Manage Itinerary →
+                                        {t('manageItineraryArrow')}
                                     </Link>
                                 </div>
                             </div>
@@ -114,14 +117,14 @@ const MyTrips = () => {
                     <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
                         <MapPin size={32} />
                     </div>
-                    <h3 className="text-lg font-medium text-gray-900 mb-1">No trips found</h3>
-                    <p className="text-gray-500 mb-6">You haven't planned any trips yet.</p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">{t('noTripsFound')}</h3>
+                    <p className="text-gray-500 mb-6">{t('youHaventPlanned')}</p>
                     <Link
                         to="/create-trip"
                         className="inline-flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
                     >
                         <PlusCircle size={20} />
-                        Start Planning
+                        {t('startPlanning')}
                     </Link>
                 </div>
             )}

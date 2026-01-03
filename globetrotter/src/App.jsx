@@ -21,28 +21,33 @@ const PrivateRoute = ({ children }) => {
   return token ? children : <Navigate to="/login" />;
 };
 
+import { LanguageProvider } from './context/LanguageContext';
+
 function App() {
   return (
-    <Router>
-      <Routes>
-        {/* Public Routes */}
-        <Route path="/login" element={<Login />} />
-        <Route path="/signup" element={<Signup />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
-        <Route path="/share/:id" element={<SharedItinerary />} />
+    <LanguageProvider>
+      <Router>
+        <Routes>
+          {/* Public Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/signup" element={<Signup />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/share/:id" element={<SharedItinerary />} />
 
-        {/* Protected Routes */}
-        <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
-          <Route index element={<Dashboard />} />
-          <Route path="my-trips" element={<MyTrips />} />
-          <Route path="create-trip" element={<CreateTrip />} />
-          <Route path="trips/:id" element={<TripDetails />} />
-          <Route path="search" element={<Search />} />
-          <Route path="profile" element={<Profile />} />
-          <Route path="dashboard/admin" element={<AdminDashboard />} />
-        </Route>
-      </Routes>
-    </Router>
+          {/* Protected Routes */}
+          <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
+            <Route index element={<Dashboard />} />
+            <Route path="my-trips" element={<MyTrips />} />
+            <Route path="create-trip" element={<CreateTrip />} />
+            <Route path="edit-trip/:id" element={<CreateTrip />} />
+            <Route path="trips/:id" element={<TripDetails />} />
+            <Route path="search" element={<Search />} />
+            <Route path="profile" element={<Profile />} />
+            <Route path="dashboard/admin" element={<AdminDashboard />} />
+          </Route>
+        </Routes>
+      </Router>
+    </LanguageProvider>
   );
 }
 

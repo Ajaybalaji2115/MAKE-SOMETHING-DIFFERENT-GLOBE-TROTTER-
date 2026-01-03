@@ -45,4 +45,19 @@ public class TripService {
         return tripRepository.findById(tripId)
                 .orElseThrow(() -> new RuntimeException("Trip not found"));
     }
+
+    public void deleteTrip(Long tripId) {
+        tripRepository.deleteById(tripId);
+    }
+
+    public Trip updateTrip(Long tripId, TripDto tripDto) {
+        Trip trip = getTripById(tripId);
+        trip.setName(tripDto.getName());
+        trip.setDescription(tripDto.getDescription());
+        trip.setStartDate(tripDto.getStartDate());
+        trip.setEndDate(tripDto.getEndDate());
+        trip.setBudget(tripDto.getBudget());
+        trip.setCoverPhotoUrl(tripDto.getCoverPhotoUrl());
+        return tripRepository.save(trip);
+    }
 }

@@ -28,16 +28,35 @@ public class EmailService {
         MimeMessage message = mailSender.createMimeMessage();
         MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
 
-        helper.setFrom(senderEmailAddress, senderName); 
+        helper.setFrom(senderEmailAddress, senderName);
         helper.setTo(toEmail);
         helper.setSubject("Password Reset OTP for Your Account");
 
-        String htmlContent =
-                "<html><body><p>Hello,</p>" +
-                        "<p>Your One-Time Password (OTP) for password reset is: <strong>" + otpCode + "</strong></p>" +
-                        "<p>This OTP is valid for 5 minutes. Please do not share it with anyone.</p>" +
-                        "<p>If you did not request a password reset, please ignore this email.</p>" +
-                        "<p>Thanks,<br/>Globetrotter Management System Team</p></body></html>";
+        String htmlContent = "<html><body><p>Hello,</p>" +
+                "<p>Your One-Time Password (OTP) for password reset is: <strong>" + otpCode + "</strong></p>" +
+                "<p>This OTP is valid for 5 minutes. Please do not share it with anyone.</p>" +
+                "<p>If you did not request a password reset, please ignore this email.</p>" +
+                "<p>Thanks,<br/>Globetrotter Management System Team</p></body></html>";
+
+        helper.setText(htmlContent, true);
+
+        mailSender.send(message);
+    }
+
+    public void sendActivationEmail(String toEmail, String otpCode)
+            throws MessagingException, UnsupportedEncodingException {
+        MimeMessage message = mailSender.createMimeMessage();
+        MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
+
+        helper.setFrom(senderEmailAddress, senderName);
+        helper.setTo(toEmail);
+        helper.setSubject("Account Activation - Verify Your Email");
+
+        String htmlContent = "<html><body><p>Welcome to GlobeTrotter!</p>" +
+                "<p>Thank you for registering. Your verification code is: <strong>" + otpCode + "</strong></p>" +
+                "<p>Please enter this code to activate your account.</p>" +
+                "<p>This code is valid for 5 minutes.</p>" +
+                "<p>Thanks,<br/>GlobeTrotter Team</p></body></html>";
 
         helper.setText(htmlContent, true);
 

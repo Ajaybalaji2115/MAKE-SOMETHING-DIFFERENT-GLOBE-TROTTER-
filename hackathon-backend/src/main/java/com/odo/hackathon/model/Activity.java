@@ -25,4 +25,8 @@ public class Activity {
 
     @Column(length = 1000)
     private String description;
+
+    private java.time.LocalTime startTime;
+    private Integer durationMinutes; // Duration in minutes
+    private Integer dayOffset; // 0 for arrival day, 1 for next day, etc.
 }

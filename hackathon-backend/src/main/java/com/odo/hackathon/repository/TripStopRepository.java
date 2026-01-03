@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface TripStopRepository extends JpaRepository<TripStop, Long> {
     List<TripStop> findByTripIdOrderByOrderIndexAsc(Long tripId);
+
+    List<TripStop> findByTripId(Long tripId, org.springframework.data.domain.Sort sort);
 }

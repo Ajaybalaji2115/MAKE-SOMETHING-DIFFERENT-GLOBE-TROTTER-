@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Calendar, DollarSign, MapPin, Clock, List, PieChart as PieChartIcon } from 'lucide-react';
+import { Calendar, Wallet, MapPin, Clock, List, PieChart as PieChartIcon } from 'lucide-react';
+import { formatCurrency } from '../utils/currency';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recharts';
 import api from '../lib/axios';
 
@@ -67,7 +68,7 @@ const SharedItinerary = () => {
                     <h1 className="text-4xl font-bold mb-2">{trip.name}</h1>
                     <div className="flex flex-wrap items-center gap-6 text-sm opacity-90 font-medium">
                         <span className="flex items-center gap-2"><Calendar size={18} /> {trip.startDate} - {trip.endDate}</span>
-                        <span className="flex items-center gap-2"><DollarSign size={18} /> Budget: ${trip.budget}</span>
+                        <span className="flex items-center gap-2"><Wallet size={18} /> Budget: {formatCurrency(trip.budget)}</span>
                     </div>
                 </div>
             </div>
@@ -110,7 +111,7 @@ const SharedItinerary = () => {
                                                             <div className="text-xs text-gray-500">{activity.category}</div>
                                                         </div>
                                                     </div>
-                                                    <div className="text-sm font-bold text-gray-700">${activity.cost}</div>
+                                                    <div className="text-sm font-bold text-gray-700">{formatCurrency(activity.cost)}</div>
                                                 </div>
                                             ))}
                                         </div>

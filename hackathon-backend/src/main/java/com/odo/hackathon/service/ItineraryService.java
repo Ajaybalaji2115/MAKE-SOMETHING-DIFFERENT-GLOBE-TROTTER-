@@ -26,8 +26,24 @@ public class ItineraryService {
     @Autowired
     private CityRepository cityRepository;
 
-    public TripStop addStop(Long tripId, Long cityId, String cityName, LocalDate arrival, LocalDate departure) {
+    public TripStop addStop(Long tripId, Long cityId, String cityName, LocalDate arrival, LocalDate departure, Double transportCost, String transportMode) {
         Trip trip = tripRepository.findById(tripId).orElseThrow(() -> new RuntimeException("Trip not found"));
+        
+        // Validation: Dates
+        if (arrival.isBefore(trip.getStartDate()) || departure.isAfter(trip.getEndDate())) {
+            throw new RuntimeException("Stop dates must be within trip dates (" + trip.getStartDate() + " to " + trip.getEndDate() + ")");
+        }
+        
+        // Validation: Overlap
+        // Check if any existing stop overlaps with new dates
+        // Allow connecting trips: New Arrival can be same as Old Departure
+        boolean overlap = trip.getStops().stream().anyMatch(s -> 
+            !((!arrival.isBefore(s.getDepartureDate())) || (!departure.isAfter(s.getArrivalDate())))
+        );
+        if (overlap) {
+            throw new RuntimeException("Stop dates overlap with an existing stop (connecting dates allowed).");
+        }
+
         City city = null;
         if (cityId != null) {
             city = cityRepository.findById(cityId).orElse(null);
@@ -43,7 +59,9 @@ public class ItineraryService {
                 .country(finalCountry)
                 .arrivalDate(arrival)
                 .departureDate(departure)
-                .orderIndex(0) // Logic to determine order needed, simplifed for now
+                .transportCost(transportCost) 
+                .transportMode(transportMode)
+                .orderIndex(0) 
                 .build();
 
         return tripStopRepository.save(stop);
@@ -53,7 +71,21 @@ public class ItineraryService {
         tripStopRepository.deleteById(stopId);
     }
 
-    public Activity addActivity(Long stopId, String name, Double cost, String category, String description) {
+    public TripStop updateStop(Long stopId, String cityName, LocalDate arrival, LocalDate departure, Double transportCost, String transportMode) {
+        TripStop stop = tripStopRepository.findById(stopId).orElseThrow(() -> new RuntimeException("Stop not found"));
+        
+        // Simple update without heavy validation for now to avoid blocking user edits, 
+        // real-world app should re-validate overlap excluding self.
+        if (cityName != null) stop.setCityName(cityName);
+        if (arrival != null) stop.setArrivalDate(arrival);
+        if (departure != null) stop.setDepartureDate(departure);
+        if (transportCost != null) stop.setTransportCost(transportCost);
+        if (transportMode != null) stop.setTransportMode(transportMode);
+
+        return tripStopRepository.save(stop);
+    }
+
+    public Activity addActivity(Long stopId, String name, Double cost, String category, String description, java.time.LocalTime startTime, Integer durationMinutes, Integer dayOffset) {
         TripStop stop = tripStopRepository.findById(stopId).orElseThrow(() -> new RuntimeException("Stop not found"));
 
         Activity activity = Activity.builder()
@@ -62,6 +94,9 @@ public class ItineraryService {
                 .cost(cost)
                 .category(category)
                 .description(description)
+                .startTime(startTime)
+                .durationMinutes(durationMinutes)
+                .dayOffset(dayOffset)
                 .build();
 
         return activityRepository.save(activity);
@@ -69,5 +104,20 @@ public class ItineraryService {
 
     public void removeActivity(Long activityId) {
         activityRepository.deleteById(activityId);
+    }
+
+    public Activity updateActivity(Long id, String name, Double cost, String category, String description, java.time.LocalTime startTime, Integer durationMinutes, Integer dayOffset) {
+        Activity activity = activityRepository.findById(id).orElseThrow(() -> new RuntimeException("Activity not found"));
+        if(name != null) activity.setName(name);
+        if(cost != null) activity.setCost(cost);
+        if(category != null) activity.setCategory(category);
+        if(description != null) activity.setDescription(description);
+        
+        // Time fields
+        activity.setStartTime(startTime);
+        activity.setDurationMinutes(durationMinutes);
+        activity.setDayOffset(dayOffset);
+
+        return activityRepository.save(activity);
     }
 }

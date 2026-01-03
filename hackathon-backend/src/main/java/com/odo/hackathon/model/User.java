@@ -21,4 +21,12 @@ public class User {
     private String role;
 
     private Long assignedTrainerId;
+
+    private boolean enabled; // For OTP verification
+
+    private String profilePhotoUrl;
+    private String languagePreference;
+
+    @jakarta.persistence.ElementCollection
+    private java.util.List<String> savedDestinations;
 }

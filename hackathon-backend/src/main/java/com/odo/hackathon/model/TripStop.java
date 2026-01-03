@@ -26,6 +26,9 @@ public class TripStop {
     private LocalDate arrivalDate;
     private LocalDate departureDate;
 
+    private Double transportCost;
+    private String transportMode; // e.g. "Flight", "Train", "Bus"
+
     private Integer orderIndex;
 
     @ManyToOne(fetch = FetchType.LAZY)

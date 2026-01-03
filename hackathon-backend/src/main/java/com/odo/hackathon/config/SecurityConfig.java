@@ -36,13 +36,12 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
-                        .requestMatchers("/api/trainer/**").hasAuthority("TRAINER")
                         .requestMatchers("/api/client/**").hasAuthority("CLIENT")
                         .requestMatchers("/api/trips/**").authenticated()
                         .requestMatchers("/api/itinerary/**").authenticated()
-                        .requestMatchers("/api/cities/**").permitAll() // Allow search to be public? Or authenticated.
-                                                                       // Lets say authenticated or permitAll. PermitAll
-                                                                       // is easier for landing page.
+                        .requestMatchers("/api/recommendations/**").authenticated()
+                        .requestMatchers("/api/cities/**").permitAll()
+                        .requestMatchers("/error").permitAll()
                         .anyRequest().authenticated())
 
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

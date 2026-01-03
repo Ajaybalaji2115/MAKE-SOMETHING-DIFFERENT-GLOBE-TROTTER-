@@ -1,11 +1,13 @@
 import React from 'react';
 import { Outlet, Link, useNavigate, useLocation } from 'react-router-dom';
 import { Map, Calendar, LogOut, User as UserIcon, PlusCircle, Search } from 'lucide-react';
+import { useLanguage } from '../context/LanguageContext';
 
 const Layout = () => {
     const navigate = useNavigate();
     const location = useLocation();
     const user = JSON.parse(localStorage.getItem('user') || '{}');
+    const { t } = useLanguage();
 
     const handleLogout = () => {
         localStorage.removeItem('token');
@@ -14,10 +16,10 @@ const Layout = () => {
     };
 
     const navItems = [
-        { path: '/', icon: Map, label: 'Dashboard' },
-        { path: '/my-trips', icon: Calendar, label: 'My Trips' },
-        { path: '/create-trip', icon: PlusCircle, label: 'New Trip' },
-        { path: '/search', icon: Search, label: 'Explore' },
+        { path: '/', icon: Map, label: t('dashboard') },
+        { path: '/my-trips', icon: Calendar, label: t('myTrips') },
+        { path: '/create-trip', icon: PlusCircle, label: t('newTrip') },
+        { path: '/search', icon: Search, label: t('explore') },
     ];
 
     return (
@@ -42,8 +44,8 @@ const Layout = () => {
                                 key={item.path}
                                 to={item.path}
                                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${isActive
-                                        ? 'bg-blue-50 text-blue-600 shadow-sm'
-                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                    ? 'bg-blue-50 text-blue-600 shadow-sm'
+                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                     }`}
                             >
                                 <Icon size={20} />
@@ -56,14 +58,14 @@ const Layout = () => {
                 <div className="p-4 border-t border-gray-100 hidden md:block">
                     <Link to="/profile" className="flex items-center gap-3 px-4 py-3 text-gray-600 hover:bg-gray-50 rounded-xl mb-2">
                         <UserIcon size={20} />
-                        <span className="font-medium">{user.name || 'Profile'}</span>
+                        <span className="font-medium">{user.name || t('profile')}</span>
                     </Link>
                     <button
                         onClick={handleLogout}
                         className="w-full flex items-center gap-3 px-4 py-3 text-red-600 hover:bg-red-50 rounded-xl transition-colors"
                     >
                         <LogOut size={20} />
-                        <span className="font-medium">Logout</span>
+                        <span className="font-medium">{t('logout')}</span>
                     </button>
                 </div>
             </aside>
