@@ -32,6 +32,13 @@ public class TripController {
         return ResponseEntity.ok(java.util.Map.of("imageUrl", imageUrl));
     }
 
+    @PostMapping("/{id}/copy")
+    public ResponseEntity<Trip> copyTrip(@PathVariable Long id, @RequestHeader("Authorization") String token) {
+        Long userId = extractUserId(token);
+        Trip copiedTrip = tripService.copyTrip(id, userId);
+        return ResponseEntity.ok(copiedTrip);
+    }
+
     @PostMapping
     public ResponseEntity<Trip> createTrip(@RequestBody TripDto tripDto, @RequestHeader("Authorization") String token) {
         Long userId = extractUserId(token);

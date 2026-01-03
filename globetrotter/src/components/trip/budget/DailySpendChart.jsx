@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { formatCurrency } from '../../../utils/currency';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
-import { BarChart2 } from 'lucide-react';
+import { BarChart2, TrendingUp, Calendar } from 'lucide-react';
 import { format, parseISO, isValid } from 'date-fns';
 import { useLanguage } from '../../../context/LanguageContext';
 
@@ -11,34 +11,24 @@ const DailySpendChart = ({ trip }) => {
     const chartData = useMemo(() => {
         if (!trip?.stops) return [];
 
-        // Map to hold date -> cost
         const dailyCosts = {};
 
-        // Helper to add cost
         const addCost = (dateStr, cost) => {
             if (!dateStr || !isValid(parseISO(dateStr))) return;
             dailyCosts[dateStr] = (dailyCosts[dateStr] || 0) + cost;
         };
 
         trip.stops.forEach(stop => {
-            // Distribute transport cost? Usually transport is on arrival date
             if (stop.transportCost && stop.arrivalDate) {
                 addCost(stop.arrivalDate, stop.transportCost);
             }
 
             if (stop.activities) {
                 stop.activities.forEach(act => {
-                    // Calculate Activity Date based on Stop Arrival + Day Offset
-                    // This logic must match the CalendarGrid logic
-                    let actDate = stop.arrivalDate; // Default
+                    let actDate = stop.arrivalDate;
                     if (act.dayOffset !== undefined && stop.arrivalDate) {
                         try {
-                            // Simple date math if date-fns not available here for some reason, but we have it
-                            // We'll rely on the backend/context generally providing a real date, 
-                            // but here we only have what's in the 'trip' object. 
-                            // Ideally backend should provide 'date' on activity, but if not:
                             const arrival = parseISO(stop.arrivalDate);
-                            // Simple add days
                             const d = new Date(arrival);
                             d.setDate(d.getDate() + act.dayOffset);
                             actDate = format(d, 'yyyy-MM-dd');
@@ -63,14 +53,34 @@ const DailySpendChart = ({ trip }) => {
             }));
     }, [trip]);
 
+    const maxSpend = useMemo(() => {
+        return Math.max(...chartData.map(d => d.amount), 0);
+    }, [chartData]);
+
+    const avgSpend = useMemo(() => {
+        if (chartData.length === 0) return 0;
+        const total = chartData.reduce((sum, item) => sum + item.amount, 0);
+        return total / chartData.length;
+    }, [chartData]);
+
     const CustomTooltip = ({ active, payload, label }) => {
         if (active && payload && payload.length) {
+            const isHighSpend = payload[0].value > avgSpend * 1.5;
             return (
-                <div className="bg-white p-3 border border-gray-100 shadow-lg rounded-lg text-xs">
-                    <p className="font-bold mb-1">{label}</p>
-                    <p className="text-blue-600 font-bold">
+                <div className="bg-white p-4 border-2 border-gray-200 shadow-xl rounded-xl text-sm">
+                    <div className="flex items-center gap-2 mb-2">
+                        <Calendar size={14} className="text-blue-500" />
+                        <p className="font-bold text-gray-900">{label}</p>
+                    </div>
+                    <p className="text-2xl font-bold text-blue-600 mb-1">
                         {formatCurrency(payload[0].value)}
                     </p>
+                    {isHighSpend && (
+                        <div className="flex items-center gap-1 text-xs text-orange-600 font-medium mt-2">
+                            <TrendingUp size={12} />
+                            High spending day
+                        </div>
+                    )}
                 </div>
             );
         }
@@ -78,46 +88,105 @@ const DailySpendChart = ({ trip }) => {
     };
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col">
-            <h3 className="font-bold text-lg mb-6 flex items-center gap-2 text-gray-800">
-                <BarChart2 size={20} className="text-blue-500" />
-                {t('dailySpending')}
-            </h3>
+        <div className="bg-white p-6 rounded-2xl shadow-lg border-2 border-gray-100 flex flex-col h-full hover:shadow-xl transition-all">
+            <div className="flex items-center justify-between mb-6">
+                <h3 className="font-bold text-xl flex items-center gap-3 text-gray-800">
+                    <div className="w-10 h-10 bg-gradient-to-br from-green-500 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                        <BarChart2 size={20} className="text-white" />
+                    </div>
+                    Daily Spending
+                </h3>
+                {chartData.length > 0 && (
+                    <div className="text-right">
+                        <p className="text-xs text-gray-500 font-semibold">Avg/Day</p>
+                        <p className="text-lg font-bold text-gray-900">{formatCurrency(avgSpend)}</p>
+                    </div>
+                )}
+            </div>
 
             <div className="flex-1 min-h-[300px]">
                 {chartData.length > 0 ? (
                     <ResponsiveContainer width="100%" height="100%">
-                        <BarChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
-                            <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <BarChart 
+                            data={chartData} 
+                            margin={{ top: 10, right: 10, left: 0, bottom: 20 }}
+                        >
+                            <defs>
+                                <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.9}/>
+                                    <stop offset="100%" stopColor="#60a5fa" stopOpacity={0.7}/>
+                                </linearGradient>
+                            </defs>
+                            <CartesianGrid 
+                                strokeDasharray="3 3" 
+                                vertical={false} 
+                                stroke="#e5e7eb" 
+                            />
                             <XAxis
                                 dataKey="displayDate"
                                 axisLine={false}
                                 tickLine={false}
-                                tick={{ fontSize: 10, fill: '#9ca3af' }}
+                                tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 600 }}
                                 dy={10}
                             />
                             <YAxis
                                 axisLine={false}
                                 tickLine={false}
-                                tick={{ fontSize: 10, fill: '#9ca3af' }}
-                                tickFormatter={(value) => `${value}`}
-                                width={40}
+                                tick={{ fontSize: 11, fill: '#6b7280', fontWeight: 600 }}
+                                tickFormatter={(value) => `$${value}`}
+                                width={50}
                             />
-                            <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f9fafb' }} />
-                            <Bar dataKey="amount" radius={[4, 4, 0, 0]} maxBarSize={50}>
-                                {chartData.map((entry, index) => (
-                                    <Cell key={`cell-${index}`} fill="#3b82f6" fillOpacity={0.8} />
-                                ))}
+                            <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f3f4f6', opacity: 0.5 }} />
+                            <Bar 
+                                dataKey="amount" 
+                                radius={[8, 8, 0, 0]} 
+                                maxBarSize={60}
+                                animationBegin={0}
+                                animationDuration={800}
+                            >
+                                {chartData.map((entry, index) => {
+                                    const isHighSpend = entry.amount > avgSpend * 1.5;
+                                    return (
+                                        <Cell 
+                                            key={`cell-${index}`} 
+                                            fill={isHighSpend ? '#f59e0b' : 'url(#barGradient)'}
+                                            className="hover:opacity-80 transition-opacity cursor-pointer"
+                                        />
+                                    );
+                                })}
                             </Bar>
                         </BarChart>
                     </ResponsiveContainer>
                 ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-2">
-                        <BarChart2 size={48} className="opacity-20" />
-                        <span className="text-sm">{t('noDailyData')}</span>
+                    <div className="h-full flex flex-col items-center justify-center text-gray-400 gap-3">
+                        <div className="w-20 h-20 bg-gradient-to-br from-gray-100 to-gray-200 rounded-2xl flex items-center justify-center">
+                            <BarChart2 size={40} className="text-gray-300" />
+                        </div>
+                        <span className="text-sm font-medium">No daily spending data</span>
+                        <p className="text-xs text-gray-400 text-center max-w-xs">
+                            Add activities with dates and costs to track your daily spending
+                        </p>
                     </div>
                 )}
             </div>
+
+            {/* Summary Stats */}
+            {chartData.length > 0 && (
+                <div className="grid grid-cols-3 gap-4 mt-6 pt-6 border-t-2 border-gray-100">
+                    <div className="text-center">
+                        <p className="text-xs text-gray-500 font-semibold mb-1">Peak Day</p>
+                        <p className="text-lg font-bold text-orange-600">{formatCurrency(maxSpend)}</p>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-xs text-gray-500 font-semibold mb-1">Total Days</p>
+                        <p className="text-lg font-bold text-blue-600">{chartData.length}</p>
+                    </div>
+                    <div className="text-center">
+                        <p className="text-xs text-gray-500 font-semibold mb-1">Average</p>
+                        <p className="text-lg font-bold text-green-600">{formatCurrency(avgSpend)}</p>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };

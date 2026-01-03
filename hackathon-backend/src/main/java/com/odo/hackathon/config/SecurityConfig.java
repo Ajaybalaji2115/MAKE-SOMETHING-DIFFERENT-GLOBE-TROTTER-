@@ -37,6 +37,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
                         .requestMatchers("/api/client/**").hasAuthority("CLIENT")
+                        .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/trips/**").permitAll()
                         .requestMatchers("/api/trips/**").authenticated()
                         .requestMatchers("/api/itinerary/**").authenticated()
                         .requestMatchers("/api/recommendations/**").authenticated()

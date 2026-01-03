@@ -37,16 +37,7 @@ export const TripProvider = ({ children, tripId }) => {
 
     const addActivity = async (stopId, activityData) => {
         try {
-            // Optimistic update
-            // Note: In a real app, we'd add it directly to state to look fast,
-            // but for now we'll rely on the re-fetch for simplicity unless it's slow.
-            // Let's do optimistic for better UX.
-
-            // For now, simpler implementation:
-            await api.post('/itinerary/activities', {
-                stopId,
-                ...activityData
-            });
+            await api.post(`/trips/${tripId}/stops/${stopId}/activities`, activityData);
             await fetchTrip();
             return true;
         } catch (err) {
@@ -57,7 +48,10 @@ export const TripProvider = ({ children, tripId }) => {
 
     const updateActivity = async (activityId, updates) => {
         try {
-            await api.put(`/itinerary/activities/${activityId}`, { ...updates });
+            const stop = trip?.stops?.find(s => s.activities?.some(a => a.id === activityId));
+            if (!stop) throw new Error("Stop not found for activity");
+
+            await api.put(`/trips/${tripId}/stops/${stop.id}/activities/${activityId}`, { ...updates });
             await fetchTrip(); // Re-fetch to sync state
             return true;
         } catch (err) {
@@ -79,7 +73,10 @@ export const TripProvider = ({ children, tripId }) => {
 
     const deleteActivity = async (activityId) => {
         try {
-            await api.delete(`/itinerary/activities/${activityId}`);
+            const stop = trip?.stops?.find(s => s.activities?.some(a => a.id === activityId));
+            if (!stop) return;
+
+            await api.delete(`/trips/${tripId}/stops/${stop.id}/activities/${activityId}`);
             await fetchTrip();
         } catch (err) {
             console.error(err);
@@ -88,7 +85,7 @@ export const TripProvider = ({ children, tripId }) => {
 
     const addStop = async (stopData) => {
         try {
-            await api.post('/itinerary/stops', { tripId, ...stopData });
+            await api.post(`/trips/${tripId}/stops`, stopData);
             await fetchTrip();
             return { success: true };
         } catch (err) {
@@ -101,7 +98,7 @@ export const TripProvider = ({ children, tripId }) => {
 
     const deleteStop = async (stopId) => {
         try {
-            await api.delete(`/itinerary/stops/${stopId}`);
+            await api.delete(`/trips/${tripId}/stops/${stopId}`);
             await fetchTrip();
         } catch (err) {
             console.error(err);
@@ -110,7 +107,7 @@ export const TripProvider = ({ children, tripId }) => {
 
     const updateStop = async (stopId, updates) => {
         try {
-            await api.put(`/itinerary/stops/${stopId}`, updates);
+            await api.put(`/trips/${tripId}/stops/${stopId}`, updates);
             await fetchTrip();
             return { success: true };
         } catch (err) {

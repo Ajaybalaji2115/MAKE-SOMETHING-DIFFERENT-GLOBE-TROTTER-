@@ -1,151 +1,233 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { Search as SearchIcon, MapPin, Star, ArrowRight, Loader } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
-import { useLanguage } from '../context/LanguageContext';
+import { Search as SearchIcon, MapPin, Globe, Map as MapIcon, Plane } from 'lucide-react';
+import api from '../lib/axios';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
+
+// Fix for default marker icon in Leaflet with React
+// delete L.Icon.Default.prototype._getIconUrl;
+L.Icon.Default.mergeOptions({
+    iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+    iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+});
 
 const Search = () => {
-    const { t } = useLanguage();
     const [query, setQuery] = useState('');
     const [results, setResults] = useState([]);
-    const [popularDestinations, setPopularDestinations] = useState([]);
     const [loading, setLoading] = useState(false);
-    const [searched, setSearched] = useState(false);
-    const navigate = useNavigate();
+    const [allCities, setAllCities] = useState([]);
+    const [expandedCityId, setExpandedCityId] = useState(null);
 
-    useEffect(() => {
-        // Fetch popular/random destinations on load
-        fetchPopularDestinations();
-    }, []);
+    const [mapLoading, setMapLoading] = useState(false);
 
-    const fetchPopularDestinations = async () => {
+    const toggleMap = async (cityId) => {
+        if (expandedCityId === cityId) {
+            setExpandedCityId(null);
+            return;
+        }
+
+        setExpandedCityId(cityId);
+
+        // Find the city
+        const cityIndex = results.findIndex(c => c.id === cityId);
+        if (cityIndex === -1) return;
+
+        const city = results[cityIndex];
+
+        // If city already has coordinates, no need to fetch
+        if (city.latitude && city.longitude) {
+            return;
+        }
+
+        setMapLoading(true);
         try {
-            // Using a mock list or existing API if available. 
-            // Since we don't have a dedicated "popular" endpoint, we can search for a common term or use hardcoded recommended ones.
-            // For now, let's just show some static "popular" ones or fetch recommended if possible.
-            // Let's reuse the recommended endpoint logic from Dashboard if accessible, or just search for "Beach" as a default.
-            const token = localStorage.getItem('token');
-            const response = await axios.get('http://localhost:8080/api/recommendations', {
-                headers: { Authorization: `Bearer ${token}` }
+            // Fetch coordinates from OpenStreetMap Nominatim API
+            // We append 'city' and 'country' to be specific
+            // Using a generic User-Agent is recommended for Nominatim, though browser usually handles it.
+            // Note: Nominatim usage policy requires a valid User-Agent.
+            // In a production backend, this should be proxied. For client-side demo:
+            const query = `${city.name}, ${city.country || ''}`;
+            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`, {
+                headers: {
+                    'Accept-Language': 'en'
+                }
             });
-            setPopularDestinations(response.data.slice(0, 3));
+
+            const data = await response.json();
+
+            if (data && data.length > 0) {
+                const { lat, lon } = data[0];
+
+                // Update the city in results state with new coordinates
+                const newResults = [...results];
+                newResults[cityIndex] = {
+                    ...city,
+                    latitude: parseFloat(lat),
+                    longitude: parseFloat(lon)
+                };
+                setResults(newResults);
+
+                // Also update allCities if needed
+                const allCitiesIndex = allCities.findIndex(c => c.id === cityId);
+                if (allCitiesIndex !== -1) {
+                    const newAllCities = [...allCities];
+                    newAllCities[allCitiesIndex] = {
+                        ...allCities[allCitiesIndex],
+                        latitude: parseFloat(lat),
+                        longitude: parseFloat(lon)
+                    };
+                    setAllCities(newAllCities);
+                }
+            }
         } catch (error) {
-            console.error('Failed to fetch popular destinations', error);
+            console.error("Failed to fetch coordinates for city:", city.name, error);
+        } finally {
+            setMapLoading(false);
+        }
+    };
+
+    const fetchCities = async () => {
+        try {
+            const response = await api.get('/cities');
+            setAllCities(response.data);
+            setResults(response.data);
+        } catch (error) {
+            console.error('Failed to fetch cities', error);
         }
     };
 
     const handleSearch = async (e) => {
-        e.preventDefault();
-        if (!query.trim()) return;
+        const val = e.target.value;
+        setQuery(val);
+
+        if (val.trim() === '') {
+            setResults(allCities);
+            return;
+        }
 
         setLoading(true);
-        setSearched(true);
         try {
-            // Using the cities search text endpoint we saw in TripDetails or similar
-            // If backend doesn't have a direct "search cities" public endpoint, we might need to mock or use what's available.
-            // Assuming /api/cities/search?query=... exists based on TripDetails findings, or we use a mocked list for now if backend is limited.
-            // Actually, based on previous files, we saw `api.get(/cities/search?query=${query})` in TripDetails.jsx.
-
-            // Wait, TripDetails uses: `api.get(/cities/search?query=${query})`
-            // But we don't have full visibility if that endpoint is secured or not, likely secured.
-            const token = localStorage.getItem('token');
-            const response = await axios.get(`http://localhost:8080/api/cities/search?query=${query}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const response = await api.get(`/cities/search?query=${val}`);
+            console.log('Search results:', response.data);
             setResults(response.data);
         } catch (error) {
-            console.error('Search failed:', error);
-            setResults([]);
+            console.error('Search failed', error);
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="max-w-7xl mx-auto space-y-8">
-            <div className="bg-gradient-to-r from-blue-600 to-indigo-700 rounded-2xl p-8 md:p-12 text-center text-white shadow-lg">
-                <h1 className="text-3xl md:text-5xl font-bold mb-4">{t('discoverAdventure')}</h1>
-                <p className="text-blue-100 text-lg mb-8 max-w-2xl mx-auto">
-                    {t('exploreCities')}
-                </p>
-
-                <form onSubmit={handleSearch} className="max-w-2xl mx-auto relative">
-                    <input
-                        type="text"
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        placeholder={t('searchDestinations')}
-                        className="w-full px-6 py-4 rounded-full text-gray-800 focus:outline-none focus:ring-4 focus:ring-blue-500/30 shadow-xl text-lg pl-12"
-                    />
-                    <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={24} />
-                    <button
-                        type="submit"
-                        className="absolute right-2 top-2 bottom-2 bg-blue-600 text-white px-6 rounded-full font-medium hover:bg-blue-700 transition flex items-center"
-                        disabled={loading}
-                    >
-                        {loading ? <Loader className="animate-spin" size={20} /> : t('search')}
-                    </button>
-                </form>
+        <div className="max-w-7xl mx-auto">
+            <div className="mb-8 text-center">
+                <h1 className="text-3xl font-bold text-gray-900">Explore Destinations</h1>
+                <p className="text-gray-500 mt-2">Find the perfect city for your next adventure.</p>
             </div>
 
-            <div className="space-y-6">
-                {!searched && (
-                    <div className="flex justify-between items-center px-2">
-                        <h2 className="text-2xl font-bold text-gray-800">{t('recommendedForYou')}</h2>
-                    </div>
-                )}
+            <div className="max-w-xl mx-auto mb-10">
+                <div className="relative">
+                    <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+                    <input
+                        type="text"
+                        className="w-full pl-12 pr-4 py-4 rounded-full border border-gray-200 shadow-sm focus:border-blue-500 focus:ring-4 focus:ring-blue-100 outline-none transition-all text-lg"
+                        placeholder="Search for a city (e.g., Paris, Tokyo)..."
+                        value={query}
+                        onChange={handleSearch}
+                    />
+                </div>
+            </div>
 
-                {searched && (
-                    <div className="flex justify-between items-center px-2">
-                        <h2 className="text-2xl font-bold text-gray-800">{t('searchResults')}</h2>
-                    </div>
-                )}
-
-                {loading ? (
-                    <div className="flex justify-center py-20">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
-                    </div>
-                ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {(searched ? results : popularDestinations).map((city) => (
-                            <div key={city.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition group">
-                                <div className="h-48 bg-gray-200 relative">
-                                    <img
-                                        src={`https://source.unsplash.com/800x600/?${city.name},landmark`}
-                                        alt={city.name}
-                                        className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
-                                    />
-                                    <div className="absolute top-3 right-3 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-md text-xs font-bold text-gray-700 flex items-center">
-                                        <Star size={12} className="text-yellow-400 mr-1 fill-current" />
-                                        4.8
-                                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {results.map((city) => (
+                    <div key={city.id} className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg transition-transform hover:-translate-y-1 duration-300">
+                        <div className="h-56 bg-gray-200 relative">
+                            {city.imageUrl ? (
+                                <img src={city.imageUrl} alt={city.name} className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-indigo-50 text-indigo-200">
+                                    <Globe size={64} />
                                 </div>
-                                <div className="p-5">
-                                    <h3 className="text-xl font-bold text-gray-900 mb-1">{city.name}</h3>
-                                    <p className="text-gray-500 flex items-center text-sm mb-4">
-                                        <MapPin size={16} className="mr-1" /> {city.country}
-                                    </p>
-                                    <p className="text-gray-600 text-sm line-clamp-2 mb-4">
-                                        {city.description || `Discover the beauty and culture of ${city.name}. A perfect destination for your next adventure.`}
-                                    </p>
-                                    <button
-                                        onClick={() => navigate('/new-trip')} // Or pre-fill new trip with this city
-                                        className="w-full py-2.5 bg-gray-50 text-blue-600 font-medium rounded-lg hover:bg-blue-50 transition flex items-center justify-center"
-                                    >
-                                        <span>{t('startPlanning')}</span>
-                                        <ArrowRight size={16} className="ml-2" />
-                                    </button>
-                                </div>
+                            )}
+                            <div className="absolute top-4 right-4 bg-white/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-gray-800 shadow-sm flex items-center gap-1">
+                                <span>Cost Index: {city.costIndex || 'N/A'}</span>
                             </div>
-                        ))}
-                    </div>
-                )}
+                            <div className="absolute top-4 left-4 bg-blue-600/90 backdrop-blur px-3 py-1 rounded-full text-xs font-bold text-white shadow-sm flex items-center gap-1">
+                                <Plane size={12} />
+                                <span>Flight</span>
+                            </div>
+                        </div>
+                        <div className="p-6">
+                            <h3 className="text-xl font-bold text-gray-900 mb-1 flex items-center gap-2">
+                                <MapPin size={20} className="text-blue-600" />
+                                {city.name}
+                            </h3>
+                            <p className="text-sm font-medium text-gray-500 mb-3">{city.country}</p>
+                            <p className="text-gray-600 text-sm line-clamp-3 mb-4">
+                                {city.description || 'Discover the beauty and culture of this amazing destination.'}
+                            </p>
+                            <div className="flex gap-2">
+                                <button
+                                    className="flex-1 py-2 bg-gray-50 text-blue-600 font-medium rounded-lg hover:bg-blue-50 transition-colors border border-gray-200"
+                                    onClick={() => alert(`Prepare to add ${city.name} to a trip (Feature coming in Itinerary Builder)`)}
+                                >
+                                    Plan Trip
+                                </button>
+                                <button
+                                    className={`flex-1 py-2 font-medium rounded-lg transition-colors border ${expandedCityId === city.id
+                                        ? 'bg-blue-600 text-white border-blue-600'
+                                        : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
+                                        }`}
+                                    onClick={() => toggleMap(city.id)}
+                                >
+                                    {expandedCityId === city.id ? 'Hide Map' : 'View Map'}
+                                </button>
+                            </div>
 
-                {searched && results.length === 0 && !loading && (
-                    <div className="text-center py-16 bg-white rounded-xl border border-dashed border-gray-200">
-                        <MapPin size={48} className="mx-auto text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900">{t('noDestinationsFound')}</h3>
-                        <p className="text-gray-500">{t('tryAdjustingSearch')}</p>
+                            {expandedCityId === city.id && (
+                                <div className="mt-4 h-64 rounded-lg overflow-hidden border border-gray-200 shadow-inner relative">
+                                    {mapLoading ? (
+                                        <div className="absolute inset-0 z-10 bg-gray-100 flex flex-col items-center justify-center text-gray-500">
+                                            <Globe className="animate-spin mb-2" size={24} />
+                                            <span className="text-sm">Locating...</span>
+                                        </div>
+                                    ) : null}
+
+                                    {city.latitude && city.longitude ? (
+                                        <MapContainer
+                                            center={[city.latitude, city.longitude]}
+                                            zoom={13}
+                                            style={{ height: '100%', width: '100%' }}
+                                        >
+                                            <TileLayer
+                                                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                                                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                                            />
+                                            <Marker position={[city.latitude, city.longitude]}>
+                                                <Popup>
+                                                    {city.name}
+                                                </Popup>
+                                            </Marker>
+                                        </MapContainer>
+                                    ) : (
+                                        !mapLoading && (
+                                            <div className="h-full w-full flex items-center justify-center bg-gray-100 text-gray-400">
+                                                <div className="text-center p-4">
+                                                    <MapIcon size={32} className="mx-auto mb-2 opacity-50" />
+                                                    <p className="text-sm">Location data not available for this city.</p>
+                                                </div>
+                                            </div>
+                                        )
+                                    )}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                ))}
+                {results.length === 0 && !loading && (
+                    <div className="col-span-full text-center py-20 text-gray-500">
+                        No cities found matching "{query}"
                     </div>
                 )}
             </div>

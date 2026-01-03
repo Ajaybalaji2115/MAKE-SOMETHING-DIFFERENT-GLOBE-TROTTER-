@@ -7,8 +7,9 @@ import {
     eachDayOfInterval, isSameMonth, addMonths, subMonths,
     parseISO, addDays, differenceInDays, isWithinInterval, startOfDay
 } from 'date-fns';
-import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, AlertCircle } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Calendar, AlertCircle, Sparkles } from 'lucide-react';
 import { DndContext, useSensor, useSensors, MouseSensor, TouchSensor, DragOverlay } from '@dnd-kit/core';
+import { toast } from 'react-toastify';
 
 import DroppableDay from './calendar/DroppableDay';
 import DraggableActivity from './calendar/DraggableActivity';
@@ -17,7 +18,6 @@ const CalendarGrid = () => {
     const { trip, updateActivity } = useTrip();
     const { t } = useLanguage();
 
-    // Initialize to Trip Start Date preferably, or Today
     const initialDate = useMemo(() => {
         if (trip?.startDate) return parseISO(trip.startDate);
         return new Date();
@@ -25,9 +25,7 @@ const CalendarGrid = () => {
 
     const [currentMonth, setCurrentMonth] = useState(initialDate);
     const [activeId, setActiveId] = useState(null);
-    const [dragError, setDragError] = useState(null); // For simplified "invalid drop" feedback (optional UI)
 
-    // Sensors
     const sensors = useSensors(
         useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
         useSensor(TouchSensor, { activationConstraint: { delay: 150, tolerance: 5 } })
@@ -41,11 +39,9 @@ const CalendarGrid = () => {
 
     if (!trip) return null;
 
-    // Navigation
     const onNextMonth = () => setCurrentMonth(addMonths(currentMonth, 1));
     const onPrevMonth = () => setCurrentMonth(subMonths(currentMonth, 1));
 
-    // Calendar Range
     const monthStart = startOfMonth(currentMonth);
     const monthEnd = endOfMonth(monthStart);
     const startDate = startOfWeek(monthStart);
@@ -55,7 +51,6 @@ const CalendarGrid = () => {
         return eachDayOfInterval({ start: startDate, end: endDate });
     }, [currentMonth]);
 
-    // Trip Range Interval
     const tripInterval = useMemo(() => {
         if (!trip.startDate || !trip.endDate) return null;
         return {
@@ -64,7 +59,6 @@ const CalendarGrid = () => {
         };
     }, [trip]);
 
-    // Flatten Activities
     const allActivities = useMemo(() => {
         return trip.stops?.flatMap(stop =>
             stop.activities?.map(act => {
@@ -83,45 +77,45 @@ const CalendarGrid = () => {
         ) || [];
     }, [trip]);
 
-    // Overlay Item
     const activeActivity = useMemo(() => {
         return allActivities.find(act => act.id.toString() === activeId);
     }, [activeId, allActivities]);
 
-    // Handlers
     const handleDragStart = (event) => {
         setActiveId(event.active.id);
-        setDragError(null);
     };
 
     const handleDragEnd = async (event) => {
         const { active, over } = event;
         setActiveId(null);
 
-        if (!over) return; // Dropped outside
+        if (!over) {
+            toast.info('Activity not moved', {
+                position: 'bottom-center',
+                autoClose: 2000
+            });
+            return;
+        }
 
         const newDateStr = over.id;
         const activityId = active.id;
         const activity = allActivities.find(a => a.id.toString() === activityId.toString());
 
         if (!activity) return;
-        if (activity.date === newDateStr) return; // No change
+        if (activity.date === newDateStr) return;
 
-        // Validation: Is dropped date a valid trip day?
-        // Note: The Droppable is disabled if not simple, but we double check logic here
         const droppedDate = parseISO(newDateStr);
         if (tripInterval && !isWithinInterval(droppedDate, tripInterval)) {
-            // Should be blocked by UI, but safety check
-            console.warn("Drop rejected: Day out of trip range.");
+            toast.error('Cannot move activity outside trip dates', {
+                position: 'bottom-center',
+                autoClose: 3000
+            });
             return;
         }
 
-        // Calculate new Offset
         const arrivalDate = activity.stopArrivalDate;
         const newDayOffset = differenceInDays(droppedDate, arrivalDate);
 
-        // Optimistic / Backend Update
-        // Fix: Send FULL payload to prevent backend from wiping out missing fields (like startTime)
         const payload = {
             name: activity.name,
             cost: activity.cost,
@@ -133,46 +127,77 @@ const CalendarGrid = () => {
             dayOffset: newDayOffset
         };
 
-        await updateActivity(activity.id, payload);
+        try {
+            await updateActivity(activity.id, payload);
+            toast.success('Activity moved successfully!', {
+                position: 'bottom-center',
+                autoClose: 2000
+            });
+        } catch (error) {
+            toast.error('Failed to move activity', {
+                position: 'bottom-center',
+                autoClose: 3000
+            });
+        }
     };
 
     return (
         <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden select-none animate-fadeIn">
+            <div className="bg-white rounded-2xl shadow-lg border border-gray-200 overflow-hidden select-none animate-fadeIn">
 
                 {/* Header */}
-                <div className="flex justify-between items-center p-4 border-b border-gray-200 bg-gray-50/80 backdrop-blur-sm sticky top-0 z-20">
+                <div className="flex flex-col sm:flex-row justify-between items-center p-5 border-b border-gray-200 bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 backdrop-blur-sm sticky top-0 z-20 gap-4">
                     <div className="flex items-center gap-4">
-                        <button onClick={onPrevMonth} className="p-2 hover:bg-white hover:shadow-sm rounded-full transition-all text-gray-600"><ChevronLeft size={20} /></button>
-                        <h2 className="font-bold text-lg text-gray-800 flex items-center gap-2">
-                            <CalendarIcon size={20} className="text-blue-500" />
+                        <button 
+                            onClick={onPrevMonth} 
+                            className="p-2.5 hover:bg-white hover:shadow-md rounded-xl transition-all text-gray-600 hover:text-blue-600 hover:scale-110 active:scale-95"
+                        >
+                            <ChevronLeft size={22} />
+                        </button>
+                        <h2 className="font-bold text-xl text-gray-800 flex items-center gap-3">
+                            <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                                <Calendar size={20} className="text-white" />
+                            </div>
                             {format(currentMonth, "MMMM yyyy")}
                         </h2>
-                        <button onClick={onNextMonth} className="p-2 hover:bg-white hover:shadow-sm rounded-full transition-all text-gray-600"><ChevronRight size={20} /></button>
+                        <button 
+                            onClick={onNextMonth} 
+                            className="p-2.5 hover:bg-white hover:shadow-md rounded-xl transition-all text-gray-600 hover:text-blue-600 hover:scale-110 active:scale-95"
+                        >
+                            <ChevronRight size={22} />
+                        </button>
                     </div>
 
                     {/* Legend */}
-                    <div className="hidden md:flex items-center gap-3 text-xs font-medium text-gray-500">
-                        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-white border border-gray-300"></span> {t('day')}</div>
-                        <div className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-gray-100 border border-gray-200 bg-[linear-gradient(45deg,transparent_25%,#00000010_25%,#00000010_50%,transparent_50%)] bg-[length:4px_4px]"></span> {t('other')}</div>
+                    <div className="flex items-center gap-4 text-xs font-medium text-gray-600 bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl shadow-sm">
+                        <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-white border-2 border-blue-400 shadow-sm"></span> 
+                            <span>Trip Day</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <span className="w-3 h-3 rounded-full bg-gray-200 border-2 border-gray-300"></span> 
+                            <span>Other</span>
+                        </div>
                     </div>
                 </div>
 
                 {/* Weekday Header */}
-                <div className="grid grid-cols-7 bg-white border-b border-gray-100 text-center py-3 text-[10px] font-bold text-gray-400 uppercase tracking-widest shadow-sm z-10 relative">
-                    <div>Sun</div><div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div>Sat</div>
+                <div className="grid grid-cols-7 bg-gradient-to-r from-gray-50 to-gray-100 border-b border-gray-200 text-center py-4 text-xs font-bold text-gray-600 uppercase tracking-widest shadow-sm z-10 relative">
+                    {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => (
+                        <div key={day} className={`${idx === 0 || idx === 6 ? 'text-blue-600' : ''}`}>
+                            {day}
+                        </div>
+                    ))}
                 </div>
 
                 {/* Grid */}
-                <div className="grid grid-cols-7 auto-rows-fr bg-gray-50">
+                <div className="grid grid-cols-7 auto-rows-fr bg-gradient-to-br from-gray-50 to-blue-50/30 min-h-[600px]">
                     {calendarDays.map((day) => {
                         const dateStr = format(day, 'yyyy-MM-dd');
                         const dayActs = allActivities.filter(a => a.date === dateStr);
 
-                        // Check if this day is part of the Trip
                         let isTripDay = false;
                         if (tripInterval) {
-                            // Using startOfDay to ignore time components
                             isTripDay = isWithinInterval(startOfDay(day), tripInterval);
                         }
 
@@ -188,19 +213,22 @@ const CalendarGrid = () => {
                     })}
                 </div>
 
-                {/* Drag Overlay Item (Visual Only) */}
+                {/* Drag Overlay */}
                 <DragOverlay dropAnimation={{ duration: 250, easing: 'cubic-bezier(0.18, 0.67, 0.6, 1.22)' }}>
                     {activeActivity ? (
-                        <div className="w-[140px] opacity-90 rotate-2 scale-105 cursor-grabbing z-50">
-                            {/* Re-using Draggable UI but making it look 'lifted' */}
-                            <div className="py-2 px-3 rounded shadow-xl bg-white border-l-[3px] border-blue-500 ring-2 ring-blue-500/20">
-                                <div className="font-bold text-sm text-gray-900 leading-tight">{activeActivity.name}</div>
-                                <div className="text-xs text-gray-500 mt-1 flex justify-between">
-                                    <span>
-                                        {activeActivity.startTime}
+                        <div className="w-[160px] opacity-95 rotate-3 scale-110 cursor-grabbing z-50 animate-pulse">
+                            <div className="py-3 px-4 rounded-xl shadow-2xl bg-gradient-to-br from-white to-blue-50 border-2 border-blue-500 ring-4 ring-blue-500/30">
+                                <div className="font-bold text-sm text-gray-900 leading-tight mb-2">{activeActivity.name}</div>
+                                <div className="text-xs text-gray-600 flex justify-between items-center">
+                                    <span className="flex items-center gap-1">
+                                        ⏰ {activeActivity.startTime}
                                         {activeActivity.endTime ? ` - ${activeActivity.endTime}` : ''}
                                     </span>
-                                    {activeActivity.cost > 0 && <span>{formatCurrency(activeActivity.cost)}</span>}
+                                    {activeActivity.cost > 0 && (
+                                        <span className="font-semibold text-green-600">
+                                            {formatCurrency(activeActivity.cost)}
+                                        </span>
+                                    )}
                                 </div>
                             </div>
                         </div>

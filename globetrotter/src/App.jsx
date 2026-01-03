@@ -1,5 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import ForgotPassword from './pages/ForgotPassword';
@@ -11,17 +14,16 @@ import TripDetails from './pages/TripDetails';
 import Profile from './pages/Profile';
 import SharedItinerary from './pages/SharedItinerary';
 import AdminDashboard from './pages/AdminDashboard';
-
 import Signup from './pages/Signup';
+import AdminRoute from './components/AdminRoute';
 
-// Placeholder components for future tasks
+import { LanguageProvider } from './context/LanguageContext';
 
+// Private Route Component
 const PrivateRoute = ({ children }) => {
   const token = localStorage.getItem('token');
   return token ? children : <Navigate to="/login" />;
 };
-
-import { LanguageProvider } from './context/LanguageContext';
 
 function App() {
   return (
@@ -43,9 +45,38 @@ function App() {
             <Route path="trips/:id" element={<TripDetails />} />
             <Route path="search" element={<Search />} />
             <Route path="profile" element={<Profile />} />
-            <Route path="dashboard/admin" element={<AdminDashboard />} />
+          </Route>
+
+          {/* Admin Routes */}
+          <Route path="/dashboard/admin" element={
+            <AdminRoute>
+              <Layout />
+            </AdminRoute>
+          }>
+            <Route index element={<AdminDashboard />} />
           </Route>
         </Routes>
+
+        {/* Toast Container - Positioned at bottom-right with custom styling */}
+        <ToastContainer
+          position="bottom-right"
+          autoClose={3000}
+          hideProgressBar={false}
+          newestOnTop={true}
+          closeOnClick
+          rtl={false}
+          pauseOnFocusLoss
+          draggable
+          pauseOnHover
+          theme="light"
+          limit={3}
+          style={{
+            zIndex: 9999
+          }}
+          toastClassName="custom-toast"
+          bodyClassName="custom-toast-body"
+          progressClassName="custom-toast-progress"
+        />
       </Router>
     </LanguageProvider>
   );

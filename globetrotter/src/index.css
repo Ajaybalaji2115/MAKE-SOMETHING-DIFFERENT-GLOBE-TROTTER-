@@ -3,3 +3,86 @@
 body {
   @apply bg-gray-50 text-gray-900;
 }
+/* Custom Toast Styling */
+.custom-toast {
+  border-radius: 12px !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15) !important;
+  font-family: inherit !important;
+  overflow: hidden !important;
+}
+
+.custom-toast-body {
+  padding: 12px 16px !important;
+  font-weight: 500 !important;
+}
+
+.custom-toast-progress {
+  height: 4px !important;
+  background: linear-gradient(to right, #3b82f6, #8b5cf6) !important;
+}
+
+/* Success Toast */
+.Toastify__toast--success {
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+  color: white !important;
+}
+
+.Toastify__toast--success .Toastify__toast-icon svg {
+  fill: white !important;
+}
+
+/* Error Toast */
+.Toastify__toast--error {
+  background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+  color: white !important;
+}
+
+.Toastify__toast--error .Toastify__toast-icon svg {
+  fill: white !important;
+}
+
+/* Info Toast */
+.Toastify__toast--info {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%) !important;
+  color: white !important;
+}
+
+.Toastify__toast--info .Toastify__toast-icon svg {
+  fill: white !important;
+}
+
+/* Warning Toast */
+.Toastify__toast--warning {
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%) !important;
+  color: white !important;
+}
+
+.Toastify__toast--warning .Toastify__toast-icon svg {
+  fill: white !important;
+}
+
+/* Close Button */
+.Toastify__close-button {
+  opacity: 0.7 !important;
+  color: white !important;
+}
+
+.Toastify__close-button:hover {
+  opacity: 1 !important;
+}
+
+/* Toast Animation */
+@keyframes toastSlideIn {
+  from {
+    transform: translate3d(110%, 0, 0);
+    opacity: 0;
+  }
+  to {
+    transform: translate3d(0, 0, 0);
+    opacity: 1;
+  }
+}
+
+.Toastify__toast {
+  animation: toastSlideIn 0.3s ease-out !important;
+}
